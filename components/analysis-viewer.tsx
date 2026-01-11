@@ -24,6 +24,9 @@ export function AnalysisViewer({ analysis }) {
   const resumeRef = useRef<HTMLDivElement>(null)
 
   const isStructuredResume = !!analysis.resumes?.structured_data
+  const canDownload = isStructuredResume
+    ? !!modifiedResumeData
+    : (modifiedResumeText || analysis.resumes?.extracted_text || "").trim().length > 0
 
   const currentScore = useMemo(() => {
     const baseScore = analysis.overall_score || 0
@@ -116,16 +119,34 @@ export function AnalysisViewer({ analysis }) {
       scale: 2,
       useCORS: true,
       backgroundColor: "#ffffff",
+      allowTaint: true,
     })
 
     const imgData = canvas.toDataURL("image/png")
     const pdf = new jsPDF({
       orientation: "portrait",
       unit: "px",
-      format: [canvas.width, canvas.height],
+      format: "a4",
     })
 
-    pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height)
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    const ratio = Math.min(pageWidth / canvas.width, pageHeight / canvas.height)
+    const imgWidth = canvas.width * ratio
+    const imgHeight = canvas.height * ratio
+
+    let position = 0
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight)
+
+    // Add extra pages if the image is taller than one page
+    let heightLeft = imgHeight
+    while (heightLeft > pageHeight) {
+      position = heightLeft - imgHeight
+      pdf.addPage()
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+    }
+
     pdf.save("optimized-resume.pdf")
   }
 
@@ -181,7 +202,7 @@ export function AnalysisViewer({ analysis }) {
             onClick={handleDownload}
             size="sm"
             className="bg-teal-600 hover:bg-teal-700 text-white"
-            disabled={acceptedIds.size === 0}
+            disabled={!canDownload || !resumeRef.current}
           >
             <Download className="h-4 w-4 mr-2" />
             Download PDF
