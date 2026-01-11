@@ -202,7 +202,7 @@ export function AnalysisViewer({ analysis }) {
             onClick={handleDownload}
             size="sm"
             className="bg-teal-600 hover:bg-teal-700 text-white"
-            disabled={!canDownload || !resumeRef.current}
+            disabled={!canDownload}
           >
             <Download className="h-4 w-4 mr-2" />
             Download PDF
